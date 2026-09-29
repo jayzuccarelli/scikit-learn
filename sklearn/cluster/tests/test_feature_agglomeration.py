@@ -3,11 +3,12 @@ Tests for sklearn.cluster._feature_agglomeration
 """
 
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 
 from sklearn.cluster import FeatureAgglomeration
 from sklearn.datasets import make_blobs
-from sklearn.utils._testing import assert_array_almost_equal
+from sklearn.utils._testing import _convert_container, assert_array_almost_equal
 
 
 def test_feature_agglomeration():
@@ -53,3 +54,40 @@ def test_feature_agglomeration_feature_names_out():
     assert_array_equal(
         [f"featureagglomeration{i}" for i in range(n_clusters)], names_out
     )
+
+
+@pytest.mark.parametrize("constructor_name", ["list", "array", "pandas", "polars"])
+def test_feature_agglomeration_inverse_transform_array_like(constructor_name):
+    """Check that `inverse_transform` accepts any array-like input."""
+    X, _ = make_blobs(n_features=6, random_state=0)
+    agglo = FeatureAgglomeration(n_clusters=3).fit(X)
+    Xt = agglo.transform(X)
+    expected = agglo.inverse_transform(Xt)
+
+    Xt_container = _convert_container(Xt, constructor_name)
+    assert_array_equal(agglo.inverse_transform(Xt_container), expected)
+
+
+@pytest.mark.parametrize("constructor_name", ["list", "array"])
+def test_feature_agglomeration_inverse_transform_1d(constructor_name):
+    """Check that `inverse_transform` accepts 1-D input of shape (n_clusters,)."""
+    X, _ = make_blobs(n_features=6, random_state=0)
+    agglo = FeatureAgglomeration(n_clusters=3).fit(X)
+    Xt = agglo.transform(X)
+    expected = agglo.inverse_transform(Xt)
+
+    Xt_1d = _convert_container(Xt[0], constructor_name)
+    assert_array_equal(agglo.inverse_transform(Xt_1d), expected[0])
+
+
+def test_feature_agglomeration_inverse_transform_set_output_pandas():
+    """Check that `inverse_transform` accepts the output of `transform` when
+    `set_output(transform="pandas")` is used."""
+    pytest.importorskip("pandas")
+    X, _ = make_blobs(n_features=6, random_state=0)
+    agglo = FeatureAgglomeration(n_clusters=3).set_output(transform="pandas")
+    Xt = agglo.fit_transform(X)
+    X_inv = agglo.inverse_transform(Xt)
+    assert isinstance(X_inv, np.ndarray)
+    assert X_inv.shape == X.shape
+    assert_array_almost_equal(agglo.transform(X_inv).to_numpy(), Xt.to_numpy())

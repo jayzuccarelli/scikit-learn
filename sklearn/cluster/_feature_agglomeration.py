@@ -10,7 +10,7 @@ import numpy as np
 from scipy.sparse import issparse
 
 from sklearn.base import TransformerMixin
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import check_array, check_is_fitted, validate_data
 
 ###############################################################################
 # Mixin class for feature agglomeration.
@@ -71,6 +71,7 @@ class AgglomerationTransform(TransformerMixin):
             each of the cluster of samples.
         """
         check_is_fitted(self)
+        X = check_array(X, ensure_2d=False)
 
         unil, inverse = np.unique(self.labels_, return_inverse=True)
         return X[..., inverse]
